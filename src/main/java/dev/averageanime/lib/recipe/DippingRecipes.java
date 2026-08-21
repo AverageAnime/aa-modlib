@@ -1,6 +1,5 @@
 package dev.averageanime.lib.recipe;
 
-import dev.averageanime.registry.FluidAmounts;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.tags.TagKey;
@@ -31,6 +30,10 @@ import java.util.List;
  * stack meets this fluid", which is as true of an ingot in molten metal as of bread in soup.
  */
 public final class DippingRecipes {
+
+    /** A bucket, in millibuckets. Fixed by the unit, not a per-mod choice. */
+    public static final int BUCKET_MB = 1000;
+
 
     private static final ResourceLocation FILLING_TYPE =
             ResourceLocation.fromNamespaceAndPath("create", "filling");
@@ -86,7 +89,7 @@ public final class DippingRecipes {
         if (container.getItem() instanceof BucketItem bucket) {
             Fluid fluid = bucketFluid(bucket);
             if (fluid == null || fluid == Fluids.EMPTY) return null;
-            return new Emptied(fluid, FluidAmounts.BUCKET, new ItemStack(Items.BUCKET));
+            return new Emptied(fluid, BUCKET_MB, new ItemStack(Items.BUCKET));
         }
 
         try {
