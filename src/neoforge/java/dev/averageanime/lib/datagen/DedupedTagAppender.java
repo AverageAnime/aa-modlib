@@ -66,5 +66,18 @@ public final class DedupedTagAppender<T> {
             }
             return this;
         }
+
+        /**
+         * Adds a nested tag if this tag does not already have it.
+         *
+         * <p>Optional for the same reason as {@link #addOptional}: a tag may name one that only exists
+         * when some other mod is installed.
+         */
+        public Appender<T> addOptionalTag(TagKey<T> nested) {
+            if (emitted.add(key.location() + "|#" + nested.location())) {
+                delegate.addOptionalTag(nested.location());
+            }
+            return this;
+        }
     }
 }
