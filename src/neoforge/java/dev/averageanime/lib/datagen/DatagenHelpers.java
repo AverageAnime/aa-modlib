@@ -2,6 +2,12 @@ package dev.averageanime.lib.datagen;
 
 import dev.averageanime.lib.fluid.FluidEntry;
 import net.minecraft.core.Direction;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.storage.loot.LootPool;
+import net.minecraft.world.level.storage.loot.LootTable;
+import net.minecraft.world.level.storage.loot.entries.LootItem;
+import net.minecraft.world.level.storage.loot.predicates.ExplosionCondition;
+import net.minecraft.world.level.storage.loot.providers.number.ConstantValue;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.tags.TagKey;
@@ -11,14 +17,14 @@ import net.neoforged.neoforge.client.model.generators.BlockModelProvider;
 import java.util.function.BiConsumer;
 
 /**
- * The parts of fluid datagen that are the same for any mod.
+ * The parts of datagen that are the same for any mod.
  *
  * <p>A fluid's block model and its convention tag follow from its id and texture, so writing them by
  * hand is transcription. Call these from a provider rather than repeating the geometry.
  */
-public final class FluidDatagen {
+public final class DatagenHelpers {
 
-    private FluidDatagen() {}
+    private DatagenHelpers() {}
 
     /**
      * The inset block model used for a placed fluid: a slightly shrunk inner cube so the surface is
@@ -66,5 +72,18 @@ public final class FluidDatagen {
                 ResourceLocation.fromNamespaceAndPath("c", fluidId));
         add.accept(tag, ResourceLocation.fromNamespaceAndPath(modId, flowingId));
         add.accept(tag, ResourceLocation.fromNamespaceAndPath(modId, fluidId));
+    }
+
+    /**
+     * The loot table for a block that simply drops itself, which is most of them.
+     *
+     * @param add the provider's own {@code add(Block, LootTable.Builder)}
+     */
+    public static void selfDrop(BiConsumer<Block, LootTable.Builder> add, Block block) {
+        add.accept(block, LootTable.lootTable()
+                .withPool(LootPool.lootPool()
+                        .setRolls(ConstantValue.exactly(1))
+                        .add(LootItem.lootTableItem(block))
+                        .when(ExplosionCondition.survivesExplosion())));
     }
 }
