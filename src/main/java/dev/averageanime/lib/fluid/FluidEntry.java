@@ -13,19 +13,16 @@ import java.util.Map;
  * <p>Declaring rather than building keeps a fluid to one line, which matters when a mod has a hundred
  * of them and each would otherwise be near-identical builder boilerplate.
  *
- * <p>Deliberately not called {@code FluidEntry}: Registrate exports a type by that name, and a mod using
- * both would have to fully qualify one of them at every import.
- *
  * <p>{@link #ALL} is per-copy. Because this class is relocated into each consuming mod, two mods never
  * share the registry even though they share the source.
  */
-public final class FluidDef {
+public final class FluidEntry {
 
     public static final float DEFAULT_FOG_START = 0.5f;
     public static final float DEFAULT_FOG_END   = 1.5f;
 
-    private static final List<FluidDef> REGISTRY = new ArrayList<>();
-    public  static final List<FluidDef> ALL      = Collections.unmodifiableList(REGISTRY);
+    private static final List<FluidEntry> REGISTRY = new ArrayList<>();
+    public  static final List<FluidEntry> ALL      = Collections.unmodifiableList(REGISTRY);
 
     private static final Map<String, String> TEXTURE_BY_ID = new HashMap<>();
 
@@ -38,7 +35,7 @@ public final class FluidDef {
     /** Base name of the {@code fluid/<texture>_still|_flow} sprites. Defaults to {@link #id}. */
     public String texture;
 
-    private FluidDef(String id, int slope, int level, float fogStart, float fogEnd) {
+    private FluidEntry(String id, int slope, int level, float fogStart, float fogEnd) {
         this.id       = id;
         this.slope    = slope;
         this.level    = level;
@@ -48,7 +45,7 @@ public final class FluidDef {
     }
 
     /** Reuse another fluid's sprites instead of requiring {@code <id>_still|_flow} textures. */
-    public FluidDef tex(String texture) {
+    public FluidEntry tex(String texture) {
         this.texture = texture;
         TEXTURE_BY_ID.put(id, texture);
         return this;
@@ -62,25 +59,25 @@ public final class FluidDef {
         return TEXTURE_BY_ID.getOrDefault(id, id);
     }
 
-    private static FluidDef register(FluidDef def) {
+    private static FluidEntry register(FluidEntry def) {
         REGISTRY.add(def);
         return def;
     }
 
-    public static FluidDef fluid(String id) {
-        return register(new FluidDef(id, -1, -1, DEFAULT_FOG_START, DEFAULT_FOG_END));
+    public static FluidEntry fluid(String id) {
+        return register(new FluidEntry(id, -1, -1, DEFAULT_FOG_START, DEFAULT_FOG_END));
     }
 
-    public static FluidDef fluid(String id, int slope, int level) {
-        return register(new FluidDef(id, slope, level, DEFAULT_FOG_START, DEFAULT_FOG_END));
+    public static FluidEntry fluid(String id, int slope, int level) {
+        return register(new FluidEntry(id, slope, level, DEFAULT_FOG_START, DEFAULT_FOG_END));
     }
 
-    public static FluidDef fluid(String id, float fogStart, float fogEnd) {
-        return register(new FluidDef(id, -1, -1, fogStart, fogEnd));
+    public static FluidEntry fluid(String id, float fogStart, float fogEnd) {
+        return register(new FluidEntry(id, -1, -1, fogStart, fogEnd));
     }
 
-    public static FluidDef fluid(String id, int slope, int level, float fogStart, float fogEnd) {
-        return register(new FluidDef(id, slope, level, fogStart, fogEnd));
+    public static FluidEntry fluid(String id, int slope, int level, float fogStart, float fogEnd) {
+        return register(new FluidEntry(id, slope, level, fogStart, fogEnd));
     }
 
     public static void init() {}
