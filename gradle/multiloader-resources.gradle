@@ -1,0 +1,95 @@
+import groovy.json.JsonOutput
+import groovy.json.JsonSlurper
+
+import javax.imageio.ImageIO
+
+// Resource processing shared by the coded loader projects and by resource-only
+// projects (addon/content jars) that must not pull in java-library, publishing
+// or the capability wiring from `multiloader-common`.
+//
+// Applies `java` rather than `java-library` purely to obtain `processResources`
+// and `sourceSets.main.resources`. A project with no `src/main/java` gets a
+// no-op `compileJava`, which is cheaper than hand-rolling a Jar task.
+plugins {
+    id 'java'
+}
+
+processResources {
+    var expandProps = [
+            'version'                      : version,
+            'group'                        : project.group, //Else we target the task's group.
+            'minecraft_version'            : minecraft_version,
+            'minecraft_version_range'      : minecraft_version_range,
+            'fabric_version'               : fabric_version,
+            'fabric_loader_version'        : fabric_loader_version,
+            'mod_name'                     : mod_name,
+            'mod_author'                   : mod_author,
+            'mod_id'                       : mod_id,
+            'license'                      : license,
+            'description'                  : project.description,
+            'neoforge_version'             : neoforge_version,
+            'neoforge_loader_version_range': neoforge_loader_version_range,
+            'java_version'                 : java_version
+    ]
+
+    filesMatching(['pack.mcmeta', 'fabric.mod.json', 'META-INF/mods.toml', 'META-INF/neoforge.mods.toml', '*.mixins.json']) {
+        expand expandProps
+    }
+    inputs.properties(expandProps)
+
+    doLast {
+        def slurper = new JsonSlurper()
+        def jsonTotal = 0L, jsonSaved = 0L
+        def pngTotal = 0L, pngSaved = 0L
+        destinationDir.eachFileRecurse(groovy.io.FileType.FILES) { f ->
+            def name = f.name
+            if (name.endsWith('.json') || name.endsWith('.mcmeta')) {
+                def before = f.length()
+                try {
+                    def parsed = slurper.parse(f, 'UTF-8')
+                    // Strip editor-only fields
+                    if (parsed instanceof Map) {
+                        parsed.remove('credit')
+                        parsed.remove('format_version')
+                        parsed.remove('groups')
+                        // Remove zero-angle rotations from elements
+                        parsed.get('elements')?.each { el ->
+                            if (el?.rotation?.angle == 0) {
+                                el.remove('rotation')
+                            }
+                        }
+                    }
+                    def compact = JsonOutput.toJson(parsed)
+                    f.setText(compact, 'UTF-8')
+                    jsonTotal += before
+                    jsonSaved += before - f.length()
+                } catch (Exception ignored) { }
+            } else if (name.endsWith('.png')) {
+                def before = f.length()
+                pngTotal += before
+                try {
+                    def img = ImageIO.read(f)
+                    if (img == null) return
+                    def tmp = new File(f.parentFile, f.name + '.tmp')
+                    if (!ImageIO.write(img, 'png', tmp)) {
+                        tmp.delete()
+                        return
+                    }
+                    if (tmp.length() > 0 && tmp.length() < before) {
+                        pngSaved += before - tmp.length()
+                        f.delete()
+                        tmp.renameTo(f)
+                    } else {
+                        tmp.delete()
+                    }
+                } catch (Exception ignored) { }
+            }
+        }
+        if (jsonTotal > 0) {
+            logger.lifecycle("JSON minify: ${jsonSaved} / ${jsonTotal} bytes saved (${(int)(jsonSaved * 100 / jsonTotal)}%)")
+        }
+        if (pngTotal > 0) {
+            logger.lifecycle("PNG re-encode: ${pngSaved} / ${pngTotal} bytes saved (${(int)(pngSaved * 100 / pngTotal)}%)")
+        }
+    }
+}
