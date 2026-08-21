@@ -7,9 +7,8 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.tags.TagKey;
 import net.minecraft.world.level.material.Fluid;
 import net.neoforged.neoforge.client.model.generators.BlockModelProvider;
-import net.neoforged.neoforge.common.data.ExistingFileHelper;
 
-import java.util.function.Function;
+import java.util.function.BiConsumer;
 
 /**
  * The parts of fluid datagen that are the same for any mod.
@@ -58,17 +57,14 @@ public final class FluidDatagen {
      * The {@code c:<fluid>} convention tag, holding both the source and its flowing variant so a recipe
      * written against the tag accepts either.
      *
-     * @param tagger how the calling provider turns a {@link TagKey} into an appendable builder
+     * @param add how the calling provider appends one id to one tag, e.g. {@code (key, id) ->
+     *            tag(key).addOptional(id)}
      */
-    public static void conventionTag(Function<TagKey<Fluid>, TagAppender> tagger,
+    public static void conventionTag(BiConsumer<TagKey<Fluid>, ResourceLocation> add,
                                      String modId, String fluidId, String flowingId) {
-        tagger.apply(TagKey.create(Registries.FLUID, ResourceLocation.fromNamespaceAndPath("c", fluidId)))
-                .addOptional(ResourceLocation.fromNamespaceAndPath(modId, flowingId))
-                .addOptional(ResourceLocation.fromNamespaceAndPath(modId, fluidId));
-    }
-
-    /** The slice of a tag builder this needs, so the caller is not tied to one provider base class. */
-    public interface TagAppender {
-        TagAppender addOptional(ResourceLocation id);
+        TagKey<Fluid> tag = TagKey.create(Registries.FLUID,
+                ResourceLocation.fromNamespaceAndPath("c", fluidId));
+        add.accept(tag, ResourceLocation.fromNamespaceAndPath(modId, flowingId));
+        add.accept(tag, ResourceLocation.fromNamespaceAndPath(modId, fluidId));
     }
 }
