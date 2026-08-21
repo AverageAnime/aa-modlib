@@ -21,6 +21,25 @@ dependencies {
     commonResources project(path: ':common', configuration: 'commonResources')
 }
 
+// Loader-specific half of the shared library. The neutral half is injected into :common, which compiles
+// against vanilla only and so cannot hold anything that names a loader API; this is where the adapters
+// that do live. Relocated into the consuming mod's own package for the same reason as the neutral half:
+// two mods must never ship the same fully-qualified class.
+def sharedLoaderSrc = rootProject.file("libs/aa-shared/src/${project.name}/java")
+def relocateSharedLoader = tasks.register('relocateSharedLoader', Copy) {
+    description = "Rewrite the ${project.name} half of the shared library into ${shared_relocate_root}"
+    onlyIf { sharedLoaderSrc.exists() }
+    from(sharedLoaderSrc)
+    into layout.buildDirectory.dir('generated/shared-src')
+    def fromPkg = 'dev.averageanime.lib'
+    def fromDir = fromPkg.replace('.', '/')
+    def toDir = shared_relocate_root.replace('.', '/')
+    filter { line -> line.replace(fromPkg, shared_relocate_root) }
+    eachFile { it.path = it.path.replace(fromDir, toDir) }
+    includeEmptyDirs = false
+}
+sourceSets.main.java.srcDir(relocateSharedLoader)
+
 tasks.named('compileJava', JavaCompile) {
     dependsOn(configurations.commonJava)
     source(configurations.commonJava)
