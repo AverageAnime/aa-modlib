@@ -78,6 +78,10 @@ public class FluidBlock {
     private float fogStart = FluidEntry.DEFAULT_FOG_START;
     private float fogEnd = FluidEntry.DEFAULT_FOG_END;
     private SoundEvent drinkSound = SoundEvents.HONEY_DRINK;
+    private SoundEvent fillSound = null;
+    private SoundEvent emptySound = null;
+    private int temperature = 300;
+    private int tickRate = 25;
 
     public FluidBlock(String name) {
         this.name = name;
@@ -127,6 +131,28 @@ public class FluidBlock {
         return this;
     }
 
+    /** Bucket handling sounds. A molten fluid wants lava rather than the default water noises. */
+    public FluidBlock bucketSounds(SoundEvent fill, SoundEvent empty) {
+        this.fillSound = fill;
+        this.emptySound = empty;
+        return this;
+    }
+
+    /**
+     * Kelvin. Vanilla treats anything at or above lava as hot enough to damage and to melt snow, so this
+     * is what makes a molten fluid behave like one rather than like coloured water.
+     */
+    public FluidBlock temperature(int temperature) {
+        this.temperature = temperature;
+        return this;
+    }
+
+    /** Ticks between flow updates. Higher is slower, which reads as thicker. */
+    public FluidBlock tickRate(int tickRate) {
+        this.tickRate = tickRate;
+        return this;
+    }
+
     public FluidType build() {
         Vector3f finalColor = fogColor;
         if (finalColor == null) {
@@ -137,9 +163,12 @@ public class FluidBlock {
                 .lightLevel(lightLevel)
                 .sound(SoundAction.get("drink"), drinkSound)
                 .density(density)
-                .viscosity(viscosity);
+                .viscosity(viscosity)
+                .temperature(temperature);
+        if (fillSound != null) properties.sound(SoundAction.get("bucket_fill"), fillSound);
+        if (emptySound != null) properties.sound(SoundAction.get("bucket_empty"), emptySound);
 
-        return new FluidType(name, texture, finalColor, properties, slopeFindDistance, levelDecreasePerBlock, fogStart, fogEnd);
+        return new FluidType(name, texture, finalColor, properties, slopeFindDistance, levelDecreasePerBlock, fogStart, fogEnd, tickRate);
     }
 
     @SuppressWarnings("NullableProblems")
@@ -154,8 +183,11 @@ public class FluidBlock {
         private final int slopeFindDistance;
         private final int levelDecreasePerBlock;
 
+        private final int tickRate;
+
         public FluidType(String name, String texture, Vector3f fogColor, net.neoforged.neoforge.fluids.FluidType.Properties fluidTypeProperties,
-                         int slopeFindDistance, int levelDecreasePerBlock, float fogStart, float fogEnd) {
+                         int slopeFindDistance, int levelDecreasePerBlock, float fogStart, float fogEnd, int tickRate) {
+            this.tickRate = tickRate;
             this.stillTexture = ResourceLocation.fromNamespaceAndPath(registrars().modId(), "fluid/" + texture + "_still");
             this.flowingTexture = ResourceLocation.fromNamespaceAndPath(registrars().modId(), "fluid/" + texture + "_flow");
             this.slopeFindDistance = slopeFindDistance;
@@ -220,7 +252,7 @@ public class FluidBlock {
                     .levelDecreasePerBlock(this.levelDecreasePerBlock)
                     .block(BLOCK)
                     .bucket(BUCKET)
-                    .tickRate(25);
+                    .tickRate(this.tickRate);
         }
     }
 }
