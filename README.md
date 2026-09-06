@@ -36,7 +36,11 @@
 
 ### Fluids
 
-- `FluidBlock` — one builder producing a fluid's source, flowing, block and bucket, per loader.
+- `FluidBlock` — one builder producing a fluid's source, flowing, block and bucket, per loader. The
+  fluid type is named from its block, `block.<mod>.<name>_block`, the way Porting Lib names vanilla
+  water and lava. Fabric already reads a fluid's name off its block while NeoForge reads a
+  `fluid_type` key of its own, so a consumer that set neither had to write the same name twice per
+  language and the two loaders disagreed wherever the pair drifted.
 - `FluidEntry`, `FluidTextureColor` — a fluid's texture and the color averaged from it, so a fluid needs
   no declared color and a redrawn texture cannot drift out of step with a constant.
 - `FluidOverlayRenderer`, `FluidSurfaceRenderer`, and the Fabric fog and screen-effect mixins — what

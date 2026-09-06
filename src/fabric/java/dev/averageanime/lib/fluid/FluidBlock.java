@@ -102,7 +102,10 @@ public class FluidBlock {
     public FluidBlock build() {
         FluidType fluidType = new FluidType(FluidType.Properties.create()
                 .density(1400)
-                .viscosity(1500));
+                .viscosity(1500)
+                // Fabric API's default attribute handler already names a fluid from its block, so this
+                // only keeps Porting Lib's own getDescription() saying the same thing.
+                .descriptionId("block." + modId() + "." + name + "_block"));
         Registry.register(PortingLibFluids.FLUID_TYPES,
                 ResourceLocation.fromNamespaceAndPath(modId(), name), fluidType);
 

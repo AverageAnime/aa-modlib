@@ -156,7 +156,11 @@ public class FluidBlock {
                 .sound(SoundAction.get("drink"), drinkSound)
                 .density(density)
                 .viscosity(viscosity)
-                .temperature(temperature);
+                .temperature(temperature)
+                // Named from its block, the way Porting Lib names vanilla water and lava, so a fluid
+                // needs one string rather than a fluid_type key duplicating the block's. Fabric API's
+                // default handler already reads the block; this is what makes NeoForge agree.
+                .descriptionId("block." + registrars().modId() + "." + name + "_block");
         if (fillSound != null) properties.sound(SoundAction.get("bucket_fill"), fillSound);
         if (emptySound != null) properties.sound(SoundAction.get("bucket_empty"), emptySound);
 
