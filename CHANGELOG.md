@@ -143,6 +143,9 @@ root, so two mods bundling it never collide on the classpath. Consumers import t
   a filesystem-safe form of `mod_name` rather than the display name: Loom unpacks the sources jar onto
   the real filesystem to remap it, and a display name like `Create: Metalwork` puts a colon into a path,
   which fails `:fabric:remapSourcesJar` outright on Windows.
+  `multiloader-resources` expands only the properties a project actually declares, which is what lets a
+  resource-only addon jar apply it: such a project has no `shared_relocate_root` to name, and naming every
+  key unconditionally made the plugin's stated purpose unreachable.
 
 ### Misc
 

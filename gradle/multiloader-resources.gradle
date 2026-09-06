@@ -15,23 +15,21 @@ plugins {
 }
 
 processResources {
+    // Built from findProperty rather than named directly: a resource-only project declares only the
+    // handful of keys its manifests reference, and an absent one must drop out rather than fail the
+    // configuration. Both mods declare every key, so their output is unchanged.
     var expandProps = [
             'version'                      : version,
             'group'                        : project.group, //Else we target the task's group.
-            'minecraft_version'            : minecraft_version,
-            'minecraft_version_range'      : minecraft_version_range,
-            'fabric_version'               : fabric_version,
-            'fabric_loader_version'        : fabric_loader_version,
-            'mod_name'                     : mod_name,
-            'mod_author'                   : mod_author,
-            'mod_id'                       : mod_id,
-            'license'                      : license,
-            'description'                  : project.description,
-            'neoforge_version'             : neoforge_version,
-            'neoforge_loader_version_range': neoforge_loader_version_range,
-            'java_version'                 : java_version,
-            'shared_relocate_root'         : shared_relocate_root
+            'description'                  : project.description
     ]
+    for (String key : ['minecraft_version', 'minecraft_version_range', 'fabric_version',
+                       'fabric_loader_version', 'mod_name', 'mod_author', 'mod_id', 'license',
+                       'neoforge_version', 'neoforge_loader_version_range', 'java_version',
+                       'shared_relocate_root']) {
+        var value = project.findProperty(key)
+        if (value != null) expandProps.put(key, value)
+    }
 
     filesMatching(['pack.mcmeta', 'fabric.mod.json', 'META-INF/mods.toml', 'META-INF/neoforge.mods.toml', '*.mixins.json']) {
         expand expandProps
