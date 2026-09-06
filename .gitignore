@@ -1,0 +1,44 @@
+# eclipse
+bin
+*.launch
+.settings
+.metadata
+.classpath
+.project
+
+# idea
+out
+*.ipr
+*.iws
+*.iml
+.idea/*
+!.idea/scopes
+.idea
+
+# gradle
+build
+.gradle
+gradle/wrapper/gradle-wrapper.jar
+
+# other
+eclipse
+run
+runs
+neoforge/server
+neoforge/run
+
+# logs and scratch files
+logs/
+**/logs/
+*.log
+*.log.gz
+*.tmp
+*.stackdump
+__pycache__/
+
+# claude / ai tooling
+.claude/
+CLAUDE.md
+CLAUDE.local.md
+.claude-*
+.mcp.json

@@ -1,0 +1,99 @@
+plugins {
+    id 'java-library'
+    id 'maven-publish'
+    id 'multiloader-resources'
+}
+
+base {
+    archivesName = "${mod_id}-${project.name}-${minecraft_version}"
+}
+
+java {
+    toolchain.languageVersion = JavaLanguageVersion.of(java_version)
+    withSourcesJar()
+    withJavadocJar()
+}
+
+repositories {
+    mavenCentral()
+    exclusiveContent {
+        forRepository {
+            maven {
+                name = 'Sponge'
+                url = 'https://repo.spongepowered.org/repository/maven-public'
+            }
+        }
+        filter { includeGroupAndSubgroups('org.spongepowered') }
+    }
+    exclusiveContent {
+        forRepositories(
+                maven {
+                    name = 'ParchmentMC'
+                    url = 'https://maven.parchmentmc.org/'
+                },
+                maven {
+                    name = "NeoForge"
+                    url = 'https://maven.neoforged.net/releases'
+                }
+        )
+        filter { includeGroup('org.parchmentmc.data') }
+    }
+    maven {
+        name = 'BlameJared'
+        url = 'https://maven.blamejared.com'
+    }
+}
+
+['apiElements', 'runtimeElements', 'sourcesElements', 'javadocElements'].each { variant ->
+    configurations."$variant".outgoing {
+        capability("$group:${base.archivesName.get()}:$version")
+        capability("$group:$mod_id-${project.name}-${minecraft_version}:$version")
+        capability("$group:$mod_id:$version")
+    }
+    publishing.publications.configureEach {
+        suppressPomMetadataWarningsFor(variant)
+    }
+}
+
+// The LICENSE carries the mod's name so that jars nested inside one another keep one license file each
+// rather than overwriting a shared LICENSE. It cannot be `mod_name` verbatim: that is a display name --
+// "Create: Metalwork" -- and Loom unpacks the sources jar onto the real filesystem to remap it, where a
+// colon is an illegal path character and fails the build outright on Windows.
+def licenseFileName = "LICENSE_" + mod_name.replaceAll(/[^A-Za-z0-9._-]+/, '_')
+
+sourcesJar {
+    from(rootProject.file('LICENSE')) {
+        rename { licenseFileName }
+    }
+}
+
+jar {
+    from(rootProject.file('LICENSE')) {
+        rename { licenseFileName }
+    }
+
+    manifest {
+        attributes([
+                'Specification-Title'   : mod_name,
+                'Specification-Vendor'  : mod_author,
+                'Specification-Version' : project.jar.archiveVersion,
+                'Implementation-Title'  : project.name,
+                'Implementation-Version': project.jar.archiveVersion,
+                'Implementation-Vendor' : mod_author,
+                'Built-On-Minecraft'    : minecraft_version
+        ])
+    }
+}
+
+publishing {
+    publications {
+        register('mavenJava', MavenPublication) {
+            def name=base.archivesName.get()
+            artifactId name.substring(0,name.lastIndexOf('-'))
+            artifact jar
+            artifact sourcesJar
+        }
+    }
+}
+
+def void register(String s, Class<MavenPublication> mavenPublicationClass, Closure<MavenArtifact> mavenArtifactClosure) {}
