@@ -105,6 +105,21 @@
   On by default; a consumer that wants it configurable calls `BasinFluidCapacity.gate` with its own
   check. Pair with `ModPresenceMixinPlugin` so it applies only when Create is installed.
 
+### Resource packs
+
+- `BuiltinPackSpec` — one pack a mod ships inside its own jar under `resourcepacks/<name>`, carrying the
+  pack id, that jar path and the translatable title. The directory is fixed by Fabric API, which derives
+  it from the pack id; NeoForge takes an arbitrary path and is handed the same one, so both loaders read
+  one directory.
+- `FabricBuiltinPacks`, `NeoForgeBuiltinPacks` — register those packs so they are enabled by default and
+  still removable. Useful for shipping a mod's changes to *other* mods' assets and data: a built-in pack
+  sorts above every mod's root pack on both loaders, so it overrides deterministically rather than by
+  mod load order, and the player gets one switch per pack.
+- `DefaultPackSelection` (NeoForge, client) — NeoForge has no equivalent of Fabric's `DEFAULT_ENABLED`
+  for client resource packs, which are available-but-unselected unless made required and therefore
+  permanent. This appends each pack id to `options.resourcePacks` the first time and records that it
+  did, in a tracker under the game directory, so the default sticks without the pack being locked on.
+
 ### Build
 
 - `multiloader-common`, `multiloader-loader`, `multiloader-resources` — the convention plugins each
@@ -113,6 +128,8 @@
   a filesystem-safe form of `mod_name` rather than the display name: Loom unpacks the sources jar onto
   the real filesystem to remap it, and a display name like `Create: Metalwork` puts a colon into a path,
   which fails `:fabric:remapSourcesJar` outright on Windows.
+  It expands `pack.mcmeta` at any depth, not just the root one, so a built-in pack under
+  `resourcepacks/` gets the same token substitution as the jar's own pack metadata.
 
 ### Misc
 

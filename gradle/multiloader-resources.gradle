@@ -31,7 +31,10 @@ processResources {
         if (value != null) expandProps.put(key, value)
     }
 
-    filesMatching(['pack.mcmeta', 'fabric.mod.json', 'META-INF/mods.toml', 'META-INF/neoforge.mods.toml', '*.mixins.json']) {
+    // '**/pack.mcmeta' as well as the bare name: an Ant pattern without a separator matches the
+    // root only, so a built-in pack nested under resourcepacks/ would ship its tokens unexpanded.
+    filesMatching(['pack.mcmeta', '**/pack.mcmeta', 'fabric.mod.json', 'META-INF/mods.toml',
+                   'META-INF/neoforge.mods.toml', '*.mixins.json']) {
         expand expandProps
     }
     inputs.properties(expandProps)
