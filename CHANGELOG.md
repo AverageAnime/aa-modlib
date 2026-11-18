@@ -57,7 +57,10 @@ root, so two mods bundling it never collide on the classpath. Consumers import t
   only where one mod supplies its input and another is not already shipping the result, which neither
   half says alone. Also carries `inherit`, which copies a default's clauses onto a config file written
   before they existed — otherwise deduplication would silently never happen for anyone who had already
-  played.
+  played. It names the entries it rewrote, because to the player who deleted a clause themselves the line
+  reads as unconditional and nothing else would say why it did not register. `resolve` is the other half:
+  it drops the entries a clause rules out, logging each with its reason, and strips the clause off the
+  rest, so a consumer filters once ahead of registration rather than once per loader.
 - `ItemFilter`, `TabFilter` — shared halves of filters whose final form differs per loader.
 
 ### Fluids
@@ -74,6 +77,16 @@ root, so two mods bundling it never collide on the classpath. Consumers import t
   extensions, so the fog colour and the submerged overlay are reached by patching the renderers directly.
   A mixin config carries a single package prefix, so these cannot share the consuming mod's existing one:
   each mod registers a config of its own naming the relocated package.
+- `FluidSegments` (NeoForge, client) — draws several fluids in one vessel the way Create's basin does:
+  one shared surface whose height follows the total against a stated capacity, split side by side so
+  each fluid shows a width in proportion to its amount. Sprite and tint come from each fluid's own
+  client extensions, so any mod's fluid draws correctly, where `FluidSurfaceRenderer` assumes a
+  consumer's own `fluid/<name>_still` layout.
+  `render` returns the surface height it drew, so items can be set on it.
+- `BasinItems` (client) — lays a vessel's stacks out the way Create's basin does: round a ring, tipped
+  toward flat, a copy per 8 items, bobbing about the fluid surface when afloat. The jitter is seeded by
+  position so a pile holds still between frames, and is horizontal only, unlike Create's, so every pile
+  rides the surface at the same depth.
 - `HotLiquidBlock`, reached by `FluidBlock.burnsEntities()` — a fluid that burns whatever stands in it on
   lava's own terms, by calling vanilla's `Entity.lavaHurt`. Heat is the block's doing, not the fluid
   type's: nothing in vanilla reads a fluid's temperature to decide damage, and joining `minecraft:lava`
@@ -92,6 +105,19 @@ root, so two mods bundling it never collide on the classpath. Consumers import t
 - `RecipeReflection` — naming another mod's recipe types without compiling against it, so a mod can stay
   off the classpath and the guarantee remains checkable.
 - `ApplicationRecipes`, `DippingRecipes` — shared recipe shapes for applying one item to another.
+  Each reads the source mod's own recipes first, then the adapted ones below.
+- `CuttingRecipes`, `PressRecipes`, `BakingMatRecipes` — what a plate can run with a held tool: Farmer's
+  Delight cutting, Create pressing and compacting, Ube's Delight's baking mat, live and adapted, as
+  `PlateRecipeView`s. `PlateRecipeEligibility`
+  limits pressing, compacting and the baking mat to what a plate reproduces faithfully: one item in, no
+  heat, no fluid.
+- `RecipeAdapter`, `AdaptedRecipeTypes`, `RecipePrepareAdaptMixin` and the per-loader `AdaptedRecipes` —
+  when Create, Farmer's Delight or Ube's Delight is absent, copies its filling, emptying, deploying,
+  pressing, compacting, cutting and baking-mat recipes onto `<modid>:adapted_*` types with only that mod's
+  own top-level `mod_loaded` condition removed, before the loader evaluates conditions. Every other
+  condition still applies. Copies that name the absent mod's own items are skipped rather than logged.
+  The adapted types are ordinary recipe types, so datapacks and scripts can target them directly. A
+  consumer opts in by calling `AdaptedRecipes.register` and registering the mixin config.
 - `RecipeSubjects`, `EnabledConditions`, and the per-loader `EnabledCondition` / `RecipeConditions` —
   a `<modid>:enabled` recipe condition, registered under the consumer's own namespace so two of them
   never collide. A mod registering its content from an editable config list ships recipes naming
@@ -144,7 +170,9 @@ root, so two mods bundling it never collide on the classpath. Consumers import t
 - `FabricBuiltinPacks`, `NeoForgeBuiltinPacks` — register those packs so they are enabled by default and
   still removable. Useful for shipping a mod's changes to *other* mods' assets and data: a built-in pack
   sorts above every mod's root pack on both loaders, so it overrides deterministically rather than by
-  mod load order, and the player gets one switch per pack.
+  mod load order, and the player gets one switch per pack. On both loaders a pack is registered only when
+  one of its namespaces is `minecraft` or a loaded mod, so a pack per supported mod does not crowd the
+  pack screen with overrides for mods that are not installed.
 - `DefaultPackSelection` (NeoForge, client) — NeoForge has no equivalent of Fabric's `DEFAULT_ENABLED`
   for client resource packs, which are available-but-unselected unless made required and therefore
   permanent. This appends each pack id to `options.resourcePacks` the first time and records that it
@@ -166,5 +194,5 @@ root, so two mods bundling it never collide on the classpath. Consumers import t
 
 ### Misc
 
-- `EffectChain`, `ItemSpawns` — status effect sequences and item spawning helpers.
+- `EffectChain`, `ItemSpawns`, `PlayerItems` — status effect sequences, item spawning, and handing a player a stack (hand or inventory first, dropped at their feet if neither fits).
 - `ModPresenceMixinPlugin` — applies a mixin only when the mod it targets is present.

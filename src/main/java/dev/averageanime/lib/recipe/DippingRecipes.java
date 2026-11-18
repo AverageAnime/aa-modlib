@@ -1,5 +1,9 @@
 package dev.averageanime.lib.recipe;
 
+import dev.averageanime.lib.recipe.adapted.AdaptedEmptyingRecipe;
+import dev.averageanime.lib.recipe.adapted.AdaptedFillingRecipe;
+import dev.averageanime.lib.recipe.adapted.AdaptedRecipeTypes;
+import dev.averageanime.lib.recipe.adapted.ChanceOutput;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.tags.TagKey;
@@ -36,11 +40,28 @@ public final class DippingRecipes {
     public record Dip(int fluidAmount, ItemStack result) {}
     public record Emptied(Fluid fluid, int amount, ItemStack container) {}
 
-    @SuppressWarnings({"unchecked", "rawtypes"})
+    /** Create's own filling recipes first, then the adapted copies and any written for the adapted type. */
     @Nullable
     public static Dip findFillingRecipe(Level level, ItemStack held, Fluid stored, int storedMb) {
         if (held.isEmpty() || stored == Fluids.EMPTY || storedMb <= 0) return null;
 
+        Dip live = findLiveFilling(level, held, stored, storedMb);
+        if (live != null) return live;
+
+        for (AdaptedFillingRecipe recipe : AdaptedRecipeTypes.FILLING.recipes(level)) {
+            if (!recipe.item().test(held) || !recipe.fluid().matches(stored)) continue;
+            int required = recipe.fluid().amount();
+            if (required <= 0 || required > storedMb) continue;
+            List<ItemStack> results = ChanceOutput.roll(recipe.results(), level.random);
+            if (results.isEmpty() || results.get(0).isEmpty()) continue;
+            return new Dip(required, results.get(0).copy());
+        }
+        return null;
+    }
+
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    @Nullable
+    private static Dip findLiveFilling(Level level, ItemStack held, Fluid stored, int storedMb) {
         try {
             RecipeType<?> fillingType = BuiltInRegistries.RECIPE_TYPE.get(FILLING_TYPE);
             if (fillingType == null) return null;
@@ -72,7 +93,7 @@ public final class DippingRecipes {
         return null;
     }
 
-    @SuppressWarnings({"unchecked", "rawtypes"})
+    /** Buckets by their fluid, then Create's own emptying recipes, then the adapted copies. */
     @Nullable
     public static Emptied findEmptyingRecipe(Level level, ItemStack container) {
         if (container.isEmpty()) return null;
@@ -83,6 +104,20 @@ public final class DippingRecipes {
             return new Emptied(fluid, BUCKET_MB, new ItemStack(Items.BUCKET));
         }
 
+        Emptied live = findLiveEmptying(level, container);
+        if (live != null) return live;
+
+        for (AdaptedEmptyingRecipe recipe : AdaptedRecipeTypes.EMPTYING.recipes(level)) {
+            if (recipe.input().test(container) && recipe.amount() > 0) {
+                return new Emptied(recipe.fluid(), recipe.amount(), recipe.leftover().copy());
+            }
+        }
+        return null;
+    }
+
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    @Nullable
+    private static Emptied findLiveEmptying(Level level, ItemStack container) {
         try {
             RecipeType<?> emptyingType = BuiltInRegistries.RECIPE_TYPE.get(EMPTYING_TYPE);
             if (emptyingType == null) return null;

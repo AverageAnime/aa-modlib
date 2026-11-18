@@ -1,13 +1,16 @@
 package dev.averageanime.lib.recipe;
 
+import dev.averageanime.lib.recipe.adapted.ChanceOutput;
 import net.minecraft.core.RegistryAccess;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.crafting.Ingredient;
 import net.minecraft.world.item.crafting.Recipe;
 
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 /** Each helper takes several candidate method names; every failure path returns a harmless default. */
 public final class RecipeReflection {
@@ -33,6 +36,56 @@ public final class RecipeReflection {
 
         ItemStack result = recipe.getResultItem(RegistryAccess.EMPTY);
         return result.isEmpty() ? List.of() : List.of(result.copy());
+    }
+
+    /** Every possible result with its chance, unrolled; the plain result at chance 1 when there is no rollable list. */
+    public static List<ChanceOutput> getChanceOutputs(Recipe<?> recipe) {
+        try {
+            Method getRollable = recipe.getClass().getMethod("getRollableResults");
+            List<?> rollable = (List<?>) getRollable.invoke(recipe);
+            List<ChanceOutput> out = new ArrayList<>();
+            for (Object entry : rollable) {
+                ItemStack stack = invokeStack(entry, "stack", "getStack");
+                if (!stack.isEmpty()) out.add(new ChanceOutput(stack.copy(), invokeFloat(entry, "chance", "getChance")));
+            }
+            if (!out.isEmpty()) return out;
+        } catch (Exception ignored) {
+        }
+
+        ItemStack result = recipe.getResultItem(RegistryAccess.EMPTY);
+        return result.isEmpty() ? List.of() : List.of(new ChanceOutput(result.copy(), 1.0f));
+    }
+
+    /**
+     * Whether {@code tool} satisfies a recipe's {@code getTool()} (Farmer's Delight's cutting board, Ube's
+     * Delight's baking mat), read by reflection so neither mod is a compile dependency. Permissive: a
+     * recipe with no readable tool accepts any.
+     */
+    public static boolean toolMatches(Object recipe, ItemStack tool) {
+        try {
+            Object toolResult = recipe.getClass().getMethod("getTool").invoke(recipe);
+            if (toolResult == null) return true;
+            if (toolResult instanceof Optional<?> opt) return opt.isEmpty() || testIngredient(opt.get(), tool);
+            if (toolResult instanceof List<?> list) {
+                if (list.isEmpty()) return true;
+                for (Object elem : list) {
+                    if (testIngredient(elem, tool)) return true;
+                }
+                return false;
+            }
+            return testIngredient(toolResult, tool);
+        } catch (Exception e) {
+            return true;
+        }
+    }
+
+    private static boolean testIngredient(Object ingredient, ItemStack tool) {
+        try {
+            if (ingredient instanceof Ingredient ing) return ing.test(tool);
+            return (boolean) ingredient.getClass().getMethod("test", ItemStack.class).invoke(ingredient, tool);
+        } catch (Exception e) {
+            return true;
+        }
     }
 
     public static float invokeFloat(Object target, String... methodNames) {

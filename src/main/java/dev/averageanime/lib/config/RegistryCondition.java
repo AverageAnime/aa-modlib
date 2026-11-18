@@ -146,7 +146,7 @@ public record RegistryCondition(Kind kind, List<String> modIds, List<RegistryCon
         if (clauses.isEmpty()) return entries;
 
         List<String> merged = new ArrayList<>(entries.size());
-        int inherited = 0;
+        List<String> inherited = new ArrayList<>();
         for (String entry : entries) {
             if (entry.indexOf(SEPARATOR) >= 0) {
                 merged.add(entry);
@@ -157,13 +157,45 @@ public record RegistryCondition(Kind kind, List<String> modIds, List<RegistryCon
                 merged.add(entry);
             } else {
                 merged.add(entry + clause);
-                inherited++;
+                inherited.add(idOf.apply(entry) + clause);
             }
         }
-        if (inherited > 0) {
-            logger.info("Applied {} default registration conditions to config entries that predate them",
-                    inherited);
+        // Named rather than counted, and a warning rather than a note: a line the player wrote themselves
+        // reads as unconditional, so seeing the clause that was put back on it is the only way they can
+        // tell why it did not register.
+        if (!inherited.isEmpty()) {
+            logger.warn("Config entries carrying no @ condition inherit the shipped default's: {}. "
+                    + "Add @always to a line to register it unconditionally.", String.join(", ", inherited));
         }
         return merged;
+    }
+
+    /** Entries that survived their {@code @} clauses, the clause stripped from each, and how many were dropped. */
+    public record Resolved(List<String> kept, int skipped) {}
+
+    /**
+     * Drops the entries a clause rules out, logging each with its reason, and strips the clause off the
+     * rest so a caller's own parser never meets one. Doing this once, ahead of registration, is what
+     * keeps two loaders from reporting a skip differently.
+     *
+     * @param idOf reads an entry's name out of a line, for the log message only
+     * @param prefix prepended to every message, for a mod that names itself in its log text
+     */
+    public static Resolved resolve(List<String> entries, java.util.function.UnaryOperator<String> idOf,
+                                   ModPlatform platform, String prefix, Logger logger) {
+        List<String> kept = new ArrayList<>(entries.size());
+        int skipped = 0;
+        for (String entry : entries) {
+            Split split = split(entry, logger);
+            if (split == null) continue; // Malformed clause, already logged.
+            if (!split.condition().isSatisfied(platform)) {
+                logger.info("{}Not registering {}: {}", prefix, idOf.apply(split.payload()),
+                        split.condition().reason(platform));
+                skipped++;
+                continue;
+            }
+            kept.add(split.payload());
+        }
+        return new Resolved(List.copyOf(kept), skipped);
     }
 }
